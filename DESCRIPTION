@@ -1,0 +1,16 @@
+Package: nexonsR
+Title: Import and Analyse Nexons RNA Sequencing Results
+Version: 0.0.0.9000
+Authors@R: 
+    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
+Description: Discover and lazily import gene and isoform read count tables
+    produced by nexons for nanopore RNA sequencing analyses. Encapsulate
+    result file paths and cached tables in an R6 object for downstream analysis.
+License: GPL-3 + file LICENSE
+Imports:
+    R6,
+    stats,
+    utils
+Config/roxygen2/version: 8.1.0
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
