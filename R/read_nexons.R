@@ -10,7 +10,16 @@
 #' The prefix is followed by `gene.txt`, `partial.txt`, or
 #' `unique.txt`. No other files or subdirectories are searched.
 #' Missing files produce a warning; if all three are missing, an error is raised.
-#' Discovery does not open the files or validate their contents.
+#' Discovery reads only the first line of each available file. Sample names
+#' must be non-empty, unique, and identical across files, regardless of order.
+#' Count rows are not read until requested.
+#'
+#' `x$metadata` or `x$get_metadata()` returns a data frame initially containing
+#' one character column, `sample`. Samples follow the first available file's
+#' order (gene, partial, then unique). Add annotation columns and pass the
+#' modified data frame to `x$set_metadata(metadata)`. It must contain each
+#' original sample exactly once; rows are restored to the original order.
+#' The `metadata` field is read-only; use the setter to replace it.
 #'
 #' Use `x$get_data("gene")` (or `"partial"`, `"unique"`) to read and cache a
 #' table on first access. Required annotation headers are validated then.
@@ -48,6 +57,29 @@ validate_string <- function(value, name, allow_empty = FALSE) {
   }
 }
 
+read_nexons_header <- function(path, type) {
+  annotation <- c("Gene_ID", "Gene_Name", "Chr", "Start", "End", "Strand")
+  if (type != "gene") annotation <- c("Transcript_ID", annotation)
+  line <- readLines(path, n = 1L, warn = FALSE)
+  # Appending a sentinel preserves empty trailing fields when splitting.
+  header <- if (length(line)) {
+    fields <- strsplit(paste0(line, "\t."), "\t", fixed = TRUE)[[1L]]
+    fields[-length(fields)]
+  } else character()
+  if (length(header) <= length(annotation) ||
+      !identical(header[seq_along(annotation)], annotation)) {
+    stop("Invalid header in ", basename(path), ": expected ",
+         paste(annotation, collapse = ", "),
+         ", followed by sample columns.", call. = FALSE)
+  }
+  samples <- header[-seq_along(annotation)]
+  if (any(!nzchar(trimws(samples))) || anyDuplicated(samples)) {
+    stop("Sample names must be non-empty and unique in ", basename(path),
+         ".", call. = FALSE)
+  }
+  list(annotation = annotation, samples = samples)
+}
+
 NexonsResults <- R6::R6Class(
   "nexonsR",
   public = list(
@@ -79,6 +111,41 @@ NexonsResults <- R6::R6Class(
       if (!all(found)) {
         warning("Missing nexons output files: ", missing_files, call. = FALSE)
       }
+      samples <- NULL
+      for (type in types[found]) {
+        current <- read_nexons_header(paths[[type]], type)$samples
+        if (is.null(samples)) samples <- current
+        if (!setequal(samples, current)) {
+          stop("Sample names do not match in ", basename(paths[[type]]),
+               ". Missing: ", paste(setdiff(samples, current), collapse = ", "),
+               "; unexpected: ", paste(setdiff(current, samples), collapse = ", "),
+               call. = FALSE)
+        }
+      }
+      private$.metadata <- data.frame(sample = samples, stringsAsFactors = FALSE)
+    },
+    get_metadata = function() {
+      private$.metadata
+    },
+    set_metadata = function(metadata) {
+      if (!is.data.frame(metadata) || anyDuplicated(names(metadata)) ||
+          !"sample" %in% names(metadata)) {
+        stop("`metadata` must be a data frame with unique column names and a `sample` column.",
+             call. = FALSE)
+      }
+      samples <- metadata[["sample"]]
+      if (!(is.character(samples) || is.factor(samples)) ||
+          anyNA(samples) || anyDuplicated(samples) ||
+          !setequal(as.character(samples), private$.metadata$sample)) {
+        stop("`metadata$sample` must contain each original sample exactly once.",
+             call. = FALSE)
+      }
+      metadata <- as.data.frame(metadata)
+      metadata$sample <- as.character(samples)
+      metadata <- metadata[match(private$.metadata$sample, metadata$sample), , drop = FALSE]
+      rownames(metadata) <- NULL
+      private$.metadata <- metadata
+      invisible(self)
     },
     get_data = function(type = c("gene", "partial", "unique")) {
       type <- match.arg(type)
@@ -87,19 +154,15 @@ NexonsResults <- R6::R6Class(
       if (is.na(path)) {
         stop("No ", type, " output file was found for this object.", call. = FALSE)
       }
-      annotation <- c("Gene_ID", "Gene_Name", "Chr", "Start", "End", "Strand")
-      if (type != "gene") annotation <- c("Transcript_ID", annotation)
-      header <- names(utils::read.delim(path, nrows = 0L, check.names = FALSE,
-        quote = "", comment.char = "", row.names = NULL))
-      if (length(header) <= length(annotation) ||
-          !identical(header[seq_along(annotation)], annotation)) {
-        stop("Invalid header in ", basename(path), ": expected ",
-             paste(annotation, collapse = ", "),
-             ", followed by sample columns.", call. = FALSE)
+      header <- read_nexons_header(path, type)
+      annotation <- header$annotation
+      if (!setequal(header$samples, private$.metadata$sample)) {
+        stop("Sample names no longer match metadata in ", basename(path),
+             ".", call. = FALSE)
       }
       # Keep identifiers (including numeric-looking IDs) as text.
       classes <- c(rep("character", length(annotation)),
-                   rep("numeric", length(header) - length(annotation)))
+                   rep("numeric", length(header$samples)))
       data <- utils::read.delim(path, check.names = FALSE, quote = "",
         comment.char = "", stringsAsFactors = FALSE, row.names = NULL,
         colClasses = classes, fill = FALSE)
@@ -125,7 +188,9 @@ NexonsResults <- R6::R6Class(
     folder = function() private$.folder,
     prefix = function() private$.prefix,
     files = function() private$.files,
+    metadata = function() private$.metadata,
     loaded = function() names(private$.cache)
   ),
-  private = list(.folder = NULL, .prefix = NULL, .files = NULL, .cache = NULL)
+  private = list(.folder = NULL, .prefix = NULL, .files = NULL, .cache = NULL,
+                 .metadata = NULL)
 )
