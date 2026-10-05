@@ -47,8 +47,8 @@ Extract gene and transcript annotations as data frames:
 ```r
 genes <- results$gene_metadata() # Gene_ID and Gene_Name from the gene file
 genes <- results$gene_metadata(file = "partial") # Distinct ID/name pairs
-transcripts <- results$transcript_metdata() # Defaults to the unique file
-transcripts <- results$transcript_metdata(file = "partial")
+transcripts <- results$transcript_metadata() # Defaults to the unique file
+transcripts <- results$transcript_metadata(file = "partial")
 ```
 
 Column names retain their original spelling: `Gene_ID`, `Gene_Name`, and

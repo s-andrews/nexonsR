@@ -45,7 +45,7 @@ from disk again. Keep source files in place until read.
 \code{Gene_ID} and \code{Gene_Name}. Gene rows are returned directly;
 \code{"partial"} and \code{"unique"} return distinct ID/name pairs in
 first-occurrence order.
-\code{x$transcript_metdata(file = "unique")} returns a data frame containing
+\code{x$transcript_metadata(file = "unique")} returns a data frame containing
 \code{Transcript_ID}, \code{Gene_ID}, and \code{Gene_Name}, retaining all rows
 in source order. Only \code{"partial"} and \code{"unique"} are allowed;
 \code{"gene"} raises an error. Both methods preserve source column names

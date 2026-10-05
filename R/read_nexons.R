@@ -30,7 +30,7 @@
 #' `x$gene_metadata(file = "gene")` returns `Gene_ID` and `Gene_Name`.
 #' Gene rows are returned directly; `"partial"` and `"unique"` return distinct
 #' ID/name pairs in first-occurrence order.
-#' `x$transcript_metdata(file = "unique")` returns `Transcript_ID`, `Gene_ID`,
+#' `x$transcript_metadata(file = "unique")` returns `Transcript_ID`, `Gene_ID`,
 #' and `Gene_Name`, retaining all rows. Only `"partial"` and `"unique"` are
 #' allowed. Both methods preserve source column names and use cached tables.
 #'
@@ -190,13 +190,16 @@ NexonsResults <- R6::R6Class(
       rownames(metadata) <- NULL
       metadata
     },
-    transcript_metdata = function(file = "unique") {
+    transcript_metadata = function(file = "unique") {
       validate_string(file, "file")
       if (!file %in% c("partial", "unique")) {
         stop("`file` must be 'partial' or 'unique'; gene files have no transcript metadata.",
              call. = FALSE)
       }
       self$get_data(file)[, c("Transcript_ID", "Gene_ID", "Gene_Name"), drop = FALSE]
+    },
+    transcript_metdata = function(file = "unique") {
+      self$transcript_metadata(file)
     },
     coverage = function(file = "gene", level = "gene", threshold = 1) {
       nexons_coverage(self, file, level, threshold)
