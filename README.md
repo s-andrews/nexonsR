@@ -24,8 +24,8 @@ names, regardless of order. Count rows are read only when accessed. Sample names
 annotation identifiers are preserved. Tables remain cached until cleared;
 source files must remain available for uncached reads.
 
-This initial version provides import and lazy access. Conversion to DESeq2
-and DRIMSeq inputs will be added separately.
+The package provides import, lazy access, and DESeq2 model fitting.
+DRIMSeq support will be added separately.
 
 Sample annotations are stored in `metadata`, initially with a single `sample`
 column. Access and update them using:
@@ -41,3 +41,23 @@ the setter restores the order from the first available file (gene, partial,
 then unique), keeping annotations attached to their samples. Additional columns
 are preserved. Count tables retain their own sample column order; use sample
 names when matching them to metadata.
+
+Fit a DESeq2 model after adding the design variables to metadata:
+
+```r
+# Install the optional dependency first: BiocManager::install("DESeq2")
+model <- results$run_deseq2(~ condition)
+DESeq2::results(model)
+
+# Sum isoform counts by Gene_ID for gene-level analysis:
+model <- results$run_deseq2(~ condition, file = "partial", level = "gene")
+
+# Analyse individual isoforms in selected samples:
+model <- results$run_deseq2(~ condition, file = "unique", level = "isoform",
+                           samples = c("control1", "control2", "treated1", "treated2"))
+```
+
+`design` is the only required argument. The method aligns counts and metadata
+by sample name and returns the fitted model without storing it in the nexonsR
+object. Gene files cannot be used for isoform analysis. Counts must be
+non-negative whole numbers; fractional counts are rejected without rounding.

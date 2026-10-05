@@ -27,6 +27,9 @@
 #' source file changes. `x$clear_cache()` releases all cached tables so the next
 #' access reads from disk again. Keep source files in place until read.
 #'
+#' Run `x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)`
+#' to fit and return a DESeq2 model. See [run_deseq2] for method arguments.
+#'
 #' R6 objects have reference semantics: assigning `y <- x` shares the object.
 #' Use `x$clone(deep = TRUE)` for an independent copy.
 #' @examples
@@ -172,6 +175,17 @@ NexonsResults <- R6::R6Class(
     clear_cache = function() {
       private$.cache <- list()
       invisible(self)
+    },
+    run_deseq2 = function(design, file = "gene", level = "gene", samples = NULL) {
+      if (missing(design)) stop("`design` must be supplied.", call. = FALSE)
+      input <- prepare_deseq2(self, file, level, samples)
+      if (!requireNamespace("DESeq2", quietly = TRUE)) {
+        stop("Install DESeq2 to use this method: BiocManager::install(\"DESeq2\").",
+             call. = FALSE)
+      }
+      dataset <- DESeq2::DESeqDataSetFromMatrix(
+        countData = input$counts, colData = input$metadata, design = design)
+      DESeq2::DESeq(dataset)
     },
     print = function(...) {
       cat("<nexonsR>\n", "Folder: ", private$.folder, "\n",

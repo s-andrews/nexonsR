@@ -43,6 +43,9 @@ from disk again. Keep source files in place until read.
 
 R6 objects have reference semantics: \code{y <- x} shares the object.
 Use \code{x$clone(deep = TRUE)} for an independent copy.
+
+Use \code{x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)}
+to fit and return a DESeq2 model; see \code{\link{run_deseq2}}.
 }
 \examples{
 folder <- tempfile()
