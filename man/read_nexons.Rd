@@ -56,6 +56,7 @@ Use \code{x$clone(deep = TRUE)} for an independent copy.
 
 Use \code{x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)}
 to fit and return a DESeq2 model; see \code{\link{run_deseq2}}.
+Count observed features with \code{x$coverage()}; see \code{\link{coverage}}.
 }
 \examples{
 folder <- tempfile()

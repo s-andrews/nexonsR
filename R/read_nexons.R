@@ -36,6 +36,7 @@
 #'
 #' Run `x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)`
 #' to fit and return a DESeq2 model. See [run_deseq2] for method arguments.
+#' Count observed features with `x$coverage()`; see [coverage].
 #'
 #' R6 objects have reference semantics: assigning `y <- x` shares the object.
 #' Use `x$clone(deep = TRUE)` for an independent copy.
@@ -196,6 +197,9 @@ NexonsResults <- R6::R6Class(
              call. = FALSE)
       }
       self$get_data(file)[, c("Transcript_ID", "Gene_ID", "Gene_Name"), drop = FALSE]
+    },
+    coverage = function(file = "gene", level = "gene", threshold = 1) {
+      nexons_coverage(self, file, level, threshold)
     },
     clear_cache = function() {
       private$.cache <- list()

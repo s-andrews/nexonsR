@@ -57,6 +57,23 @@ returns distinct pairs from partial/unique files in first-occurrence order.
 Transcript metadata returns `Transcript_ID`, `Gene_ID`, and `Gene_Name` in
 that order, preserving all rows; `file = "gene"` raises an error.
 
+Count observed genes or isoforms per sample:
+
+```r
+results$coverage()
+results$coverage(file = "partial", threshold = 10)
+results$coverage(file = "unique", level = "isoform")
+```
+
+The returned data frame contains all sample metadata columns followed by
+`gene` or `isoform`, preserving metadata order and column types. Existing
+metadata is unchanged. If the count column name already exists, the new column
+receives a numeric suffix (such as `gene.1`).
+Counts at or above the positive threshold (default 1)
+are observed. Gene coverage from partial/unique files sums counts by `Gene_ID`
+before applying the threshold. Isoform coverage requires partial/unique data.
+The selected table is loaded and cached as needed.
+
 Fit a DESeq2 model after adding the design variables to metadata:
 
 ```r
