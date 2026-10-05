@@ -1,3 +1,7 @@
+# Renv packages
+renv
+renv.lock
+
 # History files
 .Rhistory
 .Rapp.history
