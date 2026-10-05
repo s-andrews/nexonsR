@@ -41,6 +41,16 @@ Cached tables are reused even if the source file changes.
 \code{x$clear_cache()} releases all cached tables, so the next access reads
 from disk again. Keep source files in place until read.
 
+\code{x$gene_metadata(file = "gene")} returns a data frame containing
+\code{Gene_ID} and \code{Gene_Name}. Gene rows are returned directly;
+\code{"partial"} and \code{"unique"} return distinct ID/name pairs in
+first-occurrence order.
+\code{x$transcript_metdata(file = "unique")} returns a data frame containing
+\code{Transcript_ID}, \code{Gene_ID}, and \code{Gene_Name}, retaining all rows
+in source order. Only \code{"partial"} and \code{"unique"} are allowed;
+\code{"gene"} raises an error. Both methods preserve source column names
+and use cached tables, reading the selected file on first access.
+
 R6 objects have reference semantics: \code{y <- x} shares the object.
 Use \code{x$clone(deep = TRUE)} for an independent copy.
 

@@ -27,6 +27,13 @@
 #' source file changes. `x$clear_cache()` releases all cached tables so the next
 #' access reads from disk again. Keep source files in place until read.
 #'
+#' `x$gene_metadata(file = "gene")` returns `Gene_ID` and `Gene_Name`.
+#' Gene rows are returned directly; `"partial"` and `"unique"` return distinct
+#' ID/name pairs in first-occurrence order.
+#' `x$transcript_metdata(file = "unique")` returns `Transcript_ID`, `Gene_ID`,
+#' and `Gene_Name`, retaining all rows. Only `"partial"` and `"unique"` are
+#' allowed. Both methods preserve source column names and use cached tables.
+#'
 #' Run `x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)`
 #' to fit and return a DESeq2 model. See [run_deseq2] for method arguments.
 #'
@@ -171,6 +178,24 @@ NexonsResults <- R6::R6Class(
         colClasses = classes, fill = FALSE)
       private$.cache[[type]] <- data
       data
+    },
+    gene_metadata = function(file = "gene") {
+      validate_string(file, "file")
+      if (!file %in% c("gene", "partial", "unique")) {
+        stop("`file` must be 'gene', 'partial', or 'unique'.", call. = FALSE)
+      }
+      metadata <- self$get_data(file)[, c("Gene_ID", "Gene_Name"), drop = FALSE]
+      if (file != "gene") metadata <- unique(metadata)
+      rownames(metadata) <- NULL
+      metadata
+    },
+    transcript_metdata = function(file = "unique") {
+      validate_string(file, "file")
+      if (!file %in% c("partial", "unique")) {
+        stop("`file` must be 'partial' or 'unique'; gene files have no transcript metadata.",
+             call. = FALSE)
+      }
+      self$get_data(file)[, c("Transcript_ID", "Gene_ID", "Gene_Name"), drop = FALSE]
     },
     clear_cache = function() {
       private$.cache <- list()

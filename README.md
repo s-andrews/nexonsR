@@ -42,6 +42,21 @@ then unique), keeping annotations attached to their samples. Additional columns
 are preserved. Count tables retain their own sample column order; use sample
 names when matching them to metadata.
 
+Extract gene and transcript annotations as data frames:
+
+```r
+genes <- results$gene_metadata() # Gene_ID and Gene_Name from the gene file
+genes <- results$gene_metadata(file = "partial") # Distinct ID/name pairs
+transcripts <- results$transcript_metdata() # Defaults to the unique file
+transcripts <- results$transcript_metdata(file = "partial")
+```
+
+Column names retain their original spelling: `Gene_ID`, `Gene_Name`, and
+`Transcript_ID`. Gene metadata preserves all rows from the gene file and
+returns distinct pairs from partial/unique files in first-occurrence order.
+Transcript metadata returns `Transcript_ID`, `Gene_ID`, and `Gene_Name` in
+that order, preserving all rows; `file = "gene"` raises an error.
+
 Fit a DESeq2 model after adding the design variables to metadata:
 
 ```r

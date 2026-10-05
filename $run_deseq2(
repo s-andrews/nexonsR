@@ -1,0 +1,76 @@
+run_deseq2               package:nexonsR               R Documentation
+
+_F_i_t _a _D_E_S_e_q_2 _m_o_d_e_l _f_r_o_m _n_e_x_o_n_s _c_o_u_n_t_s _a_n_d _m_e_t_a_d_a_t_a
+
+_D_e_s_c_r_i_p_t_i_o_n:
+
+     The ‘run_deseq2’ method of a ‘nexonsR’ object prepares counts and
+     sample metadata, constructs a DESeq2 dataset, and runs
+     ‘DESeq2::DESeq()’ with its default settings.
+
+_U_s_a_g_e:
+
+     x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)
+     
+_A_r_g_u_m_e_n_t_s:
+
+  design: The design passed to ‘DESeq2::DESeqDataSetFromMatrix’,
+          usually a formula such as ‘~ condition’ or ‘~ batch +
+          condition’. Variables refer to columns in the object's
+          metadata. If supplying a model matrix, its rows must already
+          correspond to the selected sample order.
+
+    file: Exactly one of ‘"gene"’ (default), ‘"partial"’, or
+          ‘"unique"’. The selected file must have been found at object
+          creation.
+
+   level: Exactly ‘"gene"’ (default) or ‘"isoform"’. Gene-level
+          analysis of partial or unique tables sums counts by
+          ‘Gene_ID’. Isoform analysis uses ‘Transcript_ID’ and requires
+          partial or unique data.
+
+ samples: Optional non-empty character vector of unique sample names.
+          Both counts and metadata are selected and ordered by this
+          vector. ‘NULL’ uses all samples in metadata order.
+
+_D_e_t_a_i_l_s:
+
+     Call this method on an object returned by ‘read_nexons()’. DESeq2
+     is an optional dependency; install it using
+     ‘BiocManager::install("DESeq2")’ before running the method. Only
+     the selected table is lazily read and cached. Metadata is not
+     modified. Unused factor levels are dropped from the selected
+     metadata. Count columns and metadata rows are aligned by sample
+     name.
+
+     Counts must be finite, non-negative whole numbers and fit in R's
+     integer range, including after aggregation. Counts are never
+     rounded or normalized before fitting. Feature identifiers must be
+     non-missing and non-empty; duplicates are allowed only when
+     aggregating isoforms by gene. DESeq2 performs its own design and
+     model checks and propagates fitting errors.
+
+_V_a_l_u_e:
+
+     A fitted ‘DESeqDataSet’, suitable for ‘DESeq2::results()’. The
+     model is not stored in the nexonsR object.
+
+_S_e_e _A_l_s_o:
+
+     ‘read_nexons’
+
+_E_x_a_m_p_l_e_s:
+
+     ## Not run:
+     
+     x <- read_nexons("results")
+     metadata <- x$get_metadata()
+     # Supply annotations appropriate to your experiment:
+     metadata$condition <- factor(c("control", "control", "treated", "treated"))
+     x$set_metadata(metadata)
+     model <- x$run_deseq2(~ condition)
+     result <- DESeq2::results(model)
+     isoform_model <- x$run_deseq2(~ condition, file = "unique", level = "isoform")
+     ## End(Not run)
+     
+
