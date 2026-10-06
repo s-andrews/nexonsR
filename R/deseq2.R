@@ -1,5 +1,5 @@
 # Assemble inputs separately from fitting so alignment and aggregation can be
-# checked without requiring the optional Bioconductor dependency.
+# checked independently of model fitting.
 prepare_deseq2 <- function(object, file, level, samples) {
   prepare_model_counts(object, file, level, samples, "DESeq2")
 }

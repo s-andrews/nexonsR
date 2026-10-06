@@ -25,6 +25,11 @@ annotation identifiers are preserved. Tables remain cached until cleared;
 source files must remain available for uncached reads.
 
 The package provides import, lazy access, and DESeq2 and DRIMSeq model fitting.
+DESeq2 and DRIMSeq are required dependencies. When installing from a repository,
+configure both CRAN and Bioconductor repositories so the installer can resolve
+them. Local tarball installs with `repos = NULL` require dependencies to be
+installed beforehand, for example with
+`BiocManager::install(c("DESeq2", "DRIMSeq"))`.
 
 Sample annotations are stored in `metadata`, initially with a single `sample`
 column. Access and update them using:
@@ -76,7 +81,6 @@ The selected table is loaded and cached as needed.
 Fit a DESeq2 model after adding the design variables to metadata:
 
 ```r
-# Install the optional dependency first: BiocManager::install("DESeq2")
 model <- results$run_deseq2(~ condition)
 DESeq2::results(model)
 
@@ -96,7 +100,6 @@ non-negative whole numbers; fractional counts are rejected without rounding.
 Fit differential isoform usage models with DRIMSeq:
 
 ```r
-# Install the optional dependency first: BiocManager::install("DRIMSeq")
 # Add condition and batch columns to the object's metadata first.
 set.seed(123)
 fit <- results$run_drimseq(~ batch + condition, min_samps_feature_expr = 3)

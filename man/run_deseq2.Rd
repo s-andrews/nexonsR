@@ -25,8 +25,7 @@ Both counts and metadata are selected and ordered by this vector.
 The model is not stored in the nexonsR object.}
 \details{
 Call this method on an object returned by \code{read_nexons()}.
-DESeq2 is an optional dependency; install it using
-\code{BiocManager::install("DESeq2")} before running the method.
+DESeq2 is a required dependency of nexonsR.
 Only the selected table is lazily read and cached. Metadata is not modified.
 Unused factor levels are dropped from the selected metadata.
 Count columns and metadata rows are aligned by sample name.

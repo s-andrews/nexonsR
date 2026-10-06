@@ -1,6 +1,6 @@
 Package: nexonsR
 Title: Import and Analyse Nexons RNA Sequencing Results
-Version: 0.0.0.9004
+Version: 0.0.0.9005
 Authors@R: 
     person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
 Description: Discover and lazily import gene and isoform read count tables
@@ -8,12 +8,11 @@ Description: Discover and lazily import gene and isoform read count tables
     result file paths and cached tables in an R6 object for downstream analysis.
 License: GPL-3 + file LICENSE
 Imports:
+    DESeq2,
+    DRIMSeq,
     R6,
     stats,
     utils
-Suggests:
-    DESeq2,
-    DRIMSeq
 Config/roxygen2/version: 8.1.0
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

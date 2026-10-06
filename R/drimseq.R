@@ -1,4 +1,4 @@
-# Prepare and validate inputs without requiring the optional DRIMSeq package.
+# Prepare and validate inputs independently of DRIMSeq model fitting.
 prepare_drimseq <- function(object, design, file = "unique", samples = NULL,
                             min_samps_feature_expr, min_feature_expr = 10,
                             min_samps_feature_prop = min_samps_feature_expr,

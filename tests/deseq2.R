@@ -64,30 +64,26 @@ local({
   missing_file <- suppressWarnings(read_nexons(folder, ""))
   error(missing_file$run_deseq2(~1, file = "unique"), "No unique output")
 
-  if (requireNamespace("DESeq2", quietly = TRUE)) {
-    # Exercise real model fitting on replicated, overdispersed counts.
-    set.seed(123)
-    counts <- matrix(stats::rnbinom(6000, mu = 100, size = 5), ncol = 6,
-                     dimnames = list(NULL, samples))
-    annotation <- data.frame(Gene_ID = paste0("g", rep(1:500, each = 2)),
-      Gene_Name = "gene", Chr = "1", Start = 1, End = 10, Strand = "+")
-    write_table(cbind(Transcript_ID = paste0("t", 1:1000), annotation, counts), "partial")
-    annotation$Gene_ID <- paste0("g", 1:1000)
-    write_table(cbind(annotation, counts), "gene")
-    object <- suppressWarnings(read_nexons(folder, ""))
-    metadata <- object$metadata
-    metadata$condition <- factor(rep(c("control", "treated"), each = 3))
-    object$set_metadata(metadata)
-    for (level in c("gene", "isoform")) {
-      model <- object$run_deseq2(~condition, file = "partial", level = level,
-                               samples = selected)
-      stopifnot(inherits(model, "DESeqDataSet"),
-        identical(colnames(model), selected),
-        nrow(DESeq2::results(model)) == if (level == "gene") 500L else 1000L)
-    }
-    model <- object$run_deseq2(~condition)
-    stopifnot(inherits(model, "DESeqDataSet"), length(DESeq2::sizeFactors(model)) == 6L)
-  } else {
-    message("DESeq2 is unavailable; model-fitting integration tests skipped.")
+  # Exercise real model fitting on replicated, overdispersed counts.
+  set.seed(123)
+  counts <- matrix(stats::rnbinom(6000, mu = 100, size = 5), ncol = 6,
+                   dimnames = list(NULL, samples))
+  annotation <- data.frame(Gene_ID = paste0("g", rep(1:500, each = 2)),
+    Gene_Name = "gene", Chr = "1", Start = 1, End = 10, Strand = "+")
+  write_table(cbind(Transcript_ID = paste0("t", 1:1000), annotation, counts), "partial")
+  annotation$Gene_ID <- paste0("g", 1:1000)
+  write_table(cbind(annotation, counts), "gene")
+  object <- suppressWarnings(read_nexons(folder, ""))
+  metadata <- object$metadata
+  metadata$condition <- factor(rep(c("control", "treated"), each = 3))
+  object$set_metadata(metadata)
+  for (level in c("gene", "isoform")) {
+    model <- object$run_deseq2(~condition, file = "partial", level = level,
+                             samples = selected)
+    stopifnot(inherits(model, "DESeqDataSet"),
+      identical(colnames(model), selected),
+      nrow(DESeq2::results(model)) == if (level == "gene") 500L else 1000L)
   }
+  model <- object$run_deseq2(~condition)
+  stopifnot(inherits(model, "DESeqDataSet"), length(DESeq2::sizeFactors(model)) == 6L)
 })

@@ -127,49 +127,44 @@ local({
   error(prep(design = ~condition), "no rows")
   write_table(original)
   object$clear_cache()
-  if (requireNamespace("DRIMSeq", quietly = TRUE)) {
-    # Check the proportion filter separately from the expression filter.
-    filter_counts <- data.frame(gene_id = rep(c("keep", "drop"), each = 3),
-      feature_id = paste0("f", 1:6), matrix(rep(c(50, 50, 1, 100, 1, 1), 6), ncol = 6))
-    names(filter_counts)[-(1:2)] <- samples
-    filtered <- DRIMSeq::dmFilter(DRIMSeq::dmDSdata(filter_counts,
-      data.frame(sample_id = samples)), min_samps_feature_prop = 3,
-      min_feature_prop = 0.1)
-    stopifnot(setequal(as.character(DRIMSeq::counts(filtered)$feature_id), c("f1", "f2")))
-    # Many replicated genes support DRIMSeq's default precision estimation.
-    set.seed(12)
-    counts <- matrix(stats::rnbinom(1200, mu = 100, size = 20), ncol = 6,
-                     dimnames = list(NULL, samples))
-    annotation <- data.frame(Transcript_ID = paste0("t", 1:200),
-      Gene_ID = rep(paste0("g", 1:100), each = 2), Gene_Name = "gene",
-      Chr = "1", Start = 1, End = 10, Strand = "+")
-    counts[1, ] <- 1 # Removing this weak feature also removes its singleton gene.
-    data <- cbind(annotation, counts)
-    write_table(data)
-    write_table(data, "partial")
-    object$clear_cache()
-    fits <- list()
-    for (file in c("unique", "partial")) {
-      set.seed(123)
-      fits[[file]] <- object$run_drimseq(
-        if (file == "unique") ~batch + condition else matrix_design,
-        file = file, min_samps_feature_expr = 3)
-      stopifnot(inherits(fits[[file]], "dmDSfit"),
-        !"g1" %in% DRIMSeq::counts(fits[[file]])$gene_id,
-        identical(as.character(DRIMSeq::samples(fits[[file]])$sample_id), samples))
-    }
-    stopifnot(isTRUE(all.equal(DRIMSeq::proportions(fits$unique),
-                              DRIMSeq::proportions(fits$partial))))
-    tested <- DRIMSeq::dmTest(fits$unique, coef = "conditiontreated")
-    stopifnot(nrow(DRIMSeq::results(tested)) == 99L,
-      nrow(DRIMSeq::results(tested, level = "feature")) == 198L,
-      identical(object$metadata, metadata))
-    error(object$run_drimseq(~condition, min_samps_feature_expr = 3,
-                            min_gene_expr = 1e9), "no analysable genes")
-  } else {
-    error(object$run_drimseq(~condition, min_samps_feature_expr = 3), "Install DRIMSeq")
-    message("DRIMSeq is unavailable; model-fitting integration tests skipped.")
+  # Check the proportion filter separately from the expression filter.
+  filter_counts <- data.frame(gene_id = rep(c("keep", "drop"), each = 3),
+    feature_id = paste0("f", 1:6), matrix(rep(c(50, 50, 1, 100, 1, 1), 6), ncol = 6))
+  names(filter_counts)[-(1:2)] <- samples
+  filtered <- DRIMSeq::dmFilter(DRIMSeq::dmDSdata(filter_counts,
+    data.frame(sample_id = samples)), min_samps_feature_prop = 3,
+    min_feature_prop = 0.1)
+  stopifnot(setequal(as.character(DRIMSeq::counts(filtered)$feature_id), c("f1", "f2")))
+  # Many replicated genes support DRIMSeq's default precision estimation.
+  set.seed(12)
+  counts <- matrix(stats::rnbinom(1200, mu = 100, size = 20), ncol = 6,
+                   dimnames = list(NULL, samples))
+  annotation <- data.frame(Transcript_ID = paste0("t", 1:200),
+    Gene_ID = rep(paste0("g", 1:100), each = 2), Gene_Name = "gene",
+    Chr = "1", Start = 1, End = 10, Strand = "+")
+  counts[1, ] <- 1 # Removing this weak feature also removes its singleton gene.
+  data <- cbind(annotation, counts)
+  write_table(data)
+  write_table(data, "partial")
+  object$clear_cache()
+  fits <- list()
+  for (file in c("unique", "partial")) {
+    set.seed(123)
+    fits[[file]] <- object$run_drimseq(
+      if (file == "unique") ~batch + condition else matrix_design,
+      file = file, min_samps_feature_expr = 3)
+    stopifnot(inherits(fits[[file]], "dmDSfit"),
+      !"g1" %in% DRIMSeq::counts(fits[[file]])$gene_id,
+      identical(as.character(DRIMSeq::samples(fits[[file]])$sample_id), samples))
   }
+  stopifnot(isTRUE(all.equal(DRIMSeq::proportions(fits$unique),
+                            DRIMSeq::proportions(fits$partial))))
+  tested <- DRIMSeq::dmTest(fits$unique, coef = "conditiontreated")
+  stopifnot(nrow(DRIMSeq::results(tested)) == 99L,
+    nrow(DRIMSeq::results(tested, level = "feature")) == 198L,
+    identical(object$metadata, metadata))
+  error(object$run_drimseq(~condition, min_samps_feature_expr = 3,
+                          min_gene_expr = 1e9), "no analysable genes")
   unlink(file.path(folder, "unique.txt"))
   missing_file <- suppressWarnings(read_nexons(folder, ""))
   error(missing_file$run_drimseq(~1, min_samps_feature_expr = 2), "No unique output")

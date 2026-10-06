@@ -212,10 +212,6 @@ NexonsResults <- R6::R6Class(
     run_deseq2 = function(design, file = "gene", level = "gene", samples = NULL) {
       if (missing(design)) stop("`design` must be supplied.", call. = FALSE)
       input <- prepare_deseq2(self, file, level, samples)
-      if (!requireNamespace("DESeq2", quietly = TRUE)) {
-        stop("Install DESeq2 to use this method: BiocManager::install(\"DESeq2\").",
-             call. = FALSE)
-      }
       dataset <- DESeq2::DESeqDataSetFromMatrix(
         countData = input$counts, colData = input$metadata, design = design)
       DESeq2::DESeq(dataset)
@@ -232,10 +228,6 @@ NexonsResults <- R6::R6Class(
       input <- prepare_drimseq(self, design, file, samples,
         min_samps_feature_expr, min_feature_expr, min_samps_feature_prop,
         min_feature_prop, min_samps_gene_expr, min_gene_expr, run_gene_twice)
-      if (!requireNamespace("DRIMSeq", quietly = TRUE)) {
-        stop("Install DRIMSeq to use this method: BiocManager::install(\"DRIMSeq\").",
-             call. = FALSE)
-      }
       dataset <- DRIMSeq::dmDSdata(counts = input$counts, samples = input$metadata)
       dataset <- tryCatch(
         do.call(DRIMSeq::dmFilter, c(list(x = dataset), input$filter)),

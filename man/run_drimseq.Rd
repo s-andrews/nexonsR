@@ -38,7 +38,7 @@ Defaults to \code{FALSE}.}
 \value{A native fitted \code{dmDSfit} object, suitable for
 \code{DRIMSeq::dmTest()}. It is not stored in the nexons object.}
 \details{
-DRIMSeq is optional; install it with \code{BiocManager::install("DRIMSeq")}.
+DRIMSeq is a required dependency of nexonsR.
 Only the selected table is lazily read and cached. Object metadata is unchanged.
 Counts must be finite, non-negative whole numbers within R's integer range;
 they are never rounded or normalized. Gene and transcript IDs must be nonempty
