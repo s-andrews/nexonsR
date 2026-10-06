@@ -1,9 +1,10 @@
 # Prepare and validate inputs independently of DRIMSeq model fitting.
 prepare_drimseq <- function(object, design, file = "unique", samples = NULL,
-                            min_samps_feature_expr, min_feature_expr = 10,
+                            min_samps_feature_expr = NULL, min_feature_expr = 10,
                             min_samps_feature_prop = min_samps_feature_expr,
                             min_feature_prop = 0.1, min_samps_gene_expr = NULL,
-                            min_gene_expr = 10, run_gene_twice = FALSE) {
+                            min_gene_expr = 10, run_gene_twice = FALSE,
+                            filter_group = NULL) {
   validate_string(file, "file")
   if (!file %in% c("partial", "unique")) {
     stop("`file` must be 'partial' or 'unique'.", call. = FALSE)
@@ -14,6 +15,13 @@ prepare_drimseq <- function(object, design, file = "unique", samples = NULL,
   genes <- object$get_data(file)$Gene_ID
   if (anyNA(genes) || any(!nzchar(trimws(genes)))) {
     stop("Gene_ID must not contain missing or empty identifiers.", call. = FALSE)
+  }
+
+  if (is.null(min_samps_feature_expr)) {
+    min_samps_feature_expr <- drimseq_group_size(design, metadata, filter_group)
+  }
+  if (is.null(min_samps_feature_prop)) {
+    min_samps_feature_prop <- min_samps_feature_expr
   }
 
   if (inherits(design, "formula")) {
@@ -73,4 +81,47 @@ prepare_drimseq <- function(object, design, file = "unique", samples = NULL,
   counts <- data.frame(gene_id = genes, feature_id = rownames(input$counts),
     input$counts, check.names = FALSE, row.names = NULL)
   list(counts = counts, metadata = metadata, design = design, filter = filter)
+}
+
+# Only a bare categorical predictor identifies groups unambiguously.
+drimseq_group_size <- function(design, metadata, filter_group) {
+  guidance <- "Supply `filter_group` naming a categorical metadata column or an explicit `min_samps_feature_expr`."
+  if (is.null(filter_group)) {
+    if (inherits(design, "formula") && length(design) == 2L) {
+      terms <- tryCatch(stats::terms(design), error = function(e) NULL)
+      variables <- as.list(attr(terms, "variables"))[-1L]
+      bare_rhs <- function(x) {
+        if (is.symbol(x)) return(as.character(x) != ".")
+        if (is.numeric(x)) return(length(x) == 1L && x %in% c(0, 1))
+        is.call(x) && as.character(x[[1L]]) %in% c("+", "-") &&
+          all(vapply(as.list(x)[-1L], bare_rhs, logical(1)))
+      }
+      if (bare_rhs(design[[2L]]) &&
+          length(variables) == 1L && is.symbol(variables[[1L]]) &&
+          length(attr(terms, "term.labels")) == 1L &&
+          identical(attr(terms, "order"), 1L)) {
+        filter_group <- as.character(variables[[1L]])
+      }
+    }
+    if (is.null(filter_group)) {
+      stop("Cannot infer filtering groups from this design. ", guidance, call. = FALSE)
+    }
+  }
+  validate_string(filter_group, "filter_group")
+  if (!filter_group %in% names(metadata)) {
+    stop("`filter_group` must name a metadata column. ", guidance, call. = FALSE)
+  }
+  group <- metadata[[filter_group]]
+  if (!(is.factor(group) || is.character(group) || is.logical(group)) ||
+      !is.null(dim(group)) || anyNA(group)) {
+    stop("Filtering groups must be categorical and have no missing values. ",
+         guidance, call. = FALSE)
+  }
+  sizes <- table(group)
+  sizes <- sizes[sizes > 0L]
+  if (length(sizes) < 2L) {
+    stop("Filtering requires at least two observed groups in the selected samples. ",
+         guidance, call. = FALSE)
+  }
+  min(as.integer(sizes))
 }

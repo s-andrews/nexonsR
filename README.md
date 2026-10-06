@@ -8,6 +8,8 @@ results             # Shows file availability without reading tables
 results$files       # Absolute paths; missing files have NA paths
 genes <- results$get_data("gene") # Reads and caches only the gene table
 isoforms <- results$get_data("partial")
+selected <- results$get_data("gene", samples = c("sample-2", "sample-1"))
+log2rpm <- results$get_data("unique", units = "log2RPM")
 results$clear_cache()
 ```
 
@@ -23,6 +25,12 @@ of each available file and checks that all files have the same unique sample
 names, regardless of order. Count rows are read only when accessed. Sample names and
 annotation identifiers are preserved. Tables remain cached until cleared;
 source files must remain available for uncached reads.
+
+`get_data()` returns raw counts by default. Its `samples` argument returns only
+the named samples in the requested order while retaining every annotation
+column. With `units = "log2RPM"`, each selected sample is converted using
+`log2(count / sum(counts) * 1e6 + 1)`. Selection and conversion do not change
+the cached raw table.
 
 The package provides import, lazy access, and DESeq2 and DRIMSeq model fitting.
 DESeq2 and DRIMSeq are required dependencies. When installing from a repository,
@@ -102,13 +110,18 @@ Fit differential isoform usage models with DRIMSeq:
 ```r
 # Add condition and batch columns to the object's metadata first.
 set.seed(123)
-fit <- results$run_drimseq(~ batch + condition, min_samps_feature_expr = 3)
+fit <- results$run_drimseq(~ batch + condition, filter_group = "condition")
 tested <- DRIMSeq::dmTest(fit, coef = "conditiontreated")
 DRIMSeq::results(tested)                    # Gene-level usage changes
 DRIMSeq::results(tested, level = "feature") # Individual isoforms
 
 partial_fit <- results$run_drimseq(~ batch + condition, file = "partial",
-                                  min_samps_feature_expr = 3)
+                                  filter_group = "condition")
+
+# Infer the smallest group size from a simple categorical design:
+simple_fit <- results$run_drimseq(~ condition)
+# Or supply an explicit threshold:
+explicit_fit <- results$run_drimseq(~ batch + condition, min_samps_feature_expr = 3)
 ```
 
 Both `partial` and `unique` (the default) contain uniquely assigned reads and
@@ -116,8 +129,17 @@ receive identical handling. Supply a formula or a numeric design matrix whose
 rows match the selected sample order. The method returns a fitted `dmDSfit`;
 choose coefficients, contrasts or a reduced design in `DRIMSeq::dmTest()`.
 
-`min_samps_feature_expr` must be explicit; use the smallest group size for a
-simple group comparison. Defaults require isoform counts of at least 10 and
+`min_samps_feature_expr = NULL` uses the smallest observed group size after
+sample selection, ignoring unused factor levels. A formula with one bare
+categorical predictor identifies groups automatically. For more complex
+formulas or matrix designs, supply `filter_group` naming a categorical metadata
+column, or an explicit numeric threshold. Filtering groups must have no missing
+values and at least two observed groups. `filter_group` controls filtering only;
+it does not alter the model and is ignored with an explicit threshold.
+Omitted or `NULL` `min_samps_feature_prop` inherits the resolved sample threshold.
+This permits isoforms expressed only in one condition to survive filtering.
+
+Defaults require isoform counts of at least 10 and
 within-gene proportions of at least 0.1 in that many samples, plus summed gene
 counts of at least 10 in all selected samples. Lower `min_feature_prop` (or set
 it to zero) to retain minor isoforms; lower `min_samps_gene_expr` to tolerate

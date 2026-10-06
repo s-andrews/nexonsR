@@ -55,7 +55,7 @@ local({
   stopifnot(ncol(prep(design = ~age * condition)$design) == 4L)
   object$set_metadata(metadata)
   error(object$run_drimseq(), "design")
-  error(object$run_drimseq(~condition), "min_samps_feature_expr")
+  error(object$run_drimseq(~batch + condition), "filter_group")
   for (file in list("gene", "other", NA_character_, NULL, c("partial", "unique"))) {
     error(prep(design = ~condition, file = file), "`file`")
   }
@@ -152,7 +152,7 @@ local({
     set.seed(123)
     fits[[file]] <- object$run_drimseq(
       if (file == "unique") ~batch + condition else matrix_design,
-      file = file, min_samps_feature_expr = 3)
+      file = file, filter_group = "condition")
     stopifnot(inherits(fits[[file]], "dmDSfit"),
       !"g1" %in% DRIMSeq::counts(fits[[file]])$gene_id,
       identical(as.character(DRIMSeq::samples(fits[[file]])$sample_id), samples))

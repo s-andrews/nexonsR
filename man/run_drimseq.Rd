@@ -5,10 +5,10 @@
 precision and fits a DRIMSeq model. Hypothesis testing is performed separately.}
 \usage{
 \special{x$run_drimseq(design, file = "unique", samples = NULL,
-  min_samps_feature_expr, min_feature_expr = 10,
+  min_samps_feature_expr = NULL, min_feature_expr = 10,
   min_samps_feature_prop = min_samps_feature_expr,
   min_feature_prop = 0.1, min_samps_gene_expr = NULL,
-  min_gene_expr = 10, run_gene_twice = FALSE)}
+  min_gene_expr = 10, run_gene_twice = FALSE, filter_group = NULL)}
 }
 \arguments{
 \item{design}{A one-sided formula using sample metadata, or a numeric model
@@ -20,12 +20,16 @@ Both contain uniquely assigned reads and are handled identically.}
 \item{samples}{Optional non-empty character vector of unique known sample names.
 Counts and metadata are selected and ordered accordingly. \code{NULL} uses all
 samples in metadata order. Unused factor levels are dropped.}
-\item{min_samps_feature_expr}{Required number of samples meeting the isoform
-count threshold. For a simple group comparison, use the smallest group size.
-Groups are not inferred from the design.}
+\item{min_samps_feature_expr}{Number of samples meeting the isoform
+count threshold. The default, \code{NULL}, uses the smallest observed group
+size after sample selection. Groups are inferred only for a formula with one
+bare categorical predictor, such as \code{~ condition} or
+\code{~ 0 + condition}; otherwise supply \code{filter_group} or an explicit
+numeric threshold.}
 \item{min_feature_expr}{Minimum isoform count, default 10.}
 \item{min_samps_feature_prop}{Number of samples meeting the isoform proportion
-threshold. Defaults to \code{min_samps_feature_expr}.}
+threshold. When omitted or \code{NULL}, uses the resolved value of
+\code{min_samps_feature_expr}.}
 \item{min_feature_prop}{Minimum within-gene isoform proportion, default 0.1.
 Must be between zero and one. Set to zero to disable the positive proportion
 threshold, or lower it to retain minor isoforms.}
@@ -34,6 +38,11 @@ threshold, or lower it to retain minor isoforms.}
 \item{min_gene_expr}{Minimum summed isoform count per gene, default 10.}
 \item{run_gene_twice}{Whether to repeat gene filtering after isoform removal.
 Defaults to \code{FALSE}.}
+\item{filter_group}{Optional metadata column name used to infer filtering
+groups. Values must be factor, character or logical, with no missing values
+and at least two observed groups among selected samples. Unused factor levels
+are ignored. This controls filtering only, not the model design. Ignored when
+\code{min_samps_feature_expr} is supplied as an explicit numeric threshold.}
 }
 \value{A native fitted \code{dmDSfit} object, suitable for
 \code{DRIMSeq::dmTest()}. It is not stored in the nexons object.}
@@ -71,12 +80,16 @@ metadata$condition <- factor(rep(c("control", "treated"), each = 3))
 metadata$batch <- factor(rep(c("A", "B", "A"), 2))
 x$set_metadata(metadata)
 set.seed(123)
-fit <- x$run_drimseq(~ batch + condition, min_samps_feature_expr = 3)
+fit <- x$run_drimseq(~ batch + condition, filter_group = "condition")
 tested <- DRIMSeq::dmTest(fit, coef = "conditiontreated")
 genes <- DRIMSeq::results(tested)
 isoforms <- DRIMSeq::results(tested, level = "feature")
 partial_fit <- x$run_drimseq(~ batch + condition, file = "partial",
-                           min_samps_feature_expr = 3)
+                           filter_group = "condition")
+# A simple categorical design infers groups automatically:
+simple_fit <- x$run_drimseq(~ condition)
+# Explicit thresholds override group inference:
+explicit_fit <- x$run_drimseq(~ batch + condition, min_samps_feature_expr = 3)
 }
 }
 \seealso{\code{\link{read_nexons}}, \code{\link{run_deseq2}}}
