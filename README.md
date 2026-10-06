@@ -24,8 +24,7 @@ names, regardless of order. Count rows are read only when accessed. Sample names
 annotation identifiers are preserved. Tables remain cached until cleared;
 source files must remain available for uncached reads.
 
-The package provides import, lazy access, and DESeq2 model fitting.
-DRIMSeq support will be added separately.
+The package provides import, lazy access, and DESeq2 and DRIMSeq model fitting.
 
 Sample annotations are stored in `metadata`, initially with a single `sample`
 column. Access and update them using:
@@ -93,3 +92,31 @@ model <- results$run_deseq2(~ condition, file = "unique", level = "isoform",
 by sample name and returns the fitted model without storing it in the nexonsR
 object. Gene files cannot be used for isoform analysis. Counts must be
 non-negative whole numbers; fractional counts are rejected without rounding.
+
+Fit differential isoform usage models with DRIMSeq:
+
+```r
+# Install the optional dependency first: BiocManager::install("DRIMSeq")
+# Add condition and batch columns to the object's metadata first.
+set.seed(123)
+fit <- results$run_drimseq(~ batch + condition, min_samps_feature_expr = 3)
+tested <- DRIMSeq::dmTest(fit, coef = "conditiontreated")
+DRIMSeq::results(tested)                    # Gene-level usage changes
+DRIMSeq::results(tested, level = "feature") # Individual isoforms
+
+partial_fit <- results$run_drimseq(~ batch + condition, file = "partial",
+                                  min_samps_feature_expr = 3)
+```
+
+Both `partial` and `unique` (the default) contain uniquely assigned reads and
+receive identical handling. Supply a formula or a numeric design matrix whose
+rows match the selected sample order. The method returns a fitted `dmDSfit`;
+choose coefficients, contrasts or a reduced design in `DRIMSeq::dmTest()`.
+
+`min_samps_feature_expr` must be explicit; use the smallest group size for a
+simple group comparison. Defaults require isoform counts of at least 10 and
+within-gene proportions of at least 0.1 in that many samples, plus summed gene
+counts of at least 10 in all selected samples. Lower `min_feature_prop` (or set
+it to zero) to retain minor isoforms; lower `min_samps_gene_expr` to tolerate
+poorly observed samples in larger cohorts. These are starting thresholds, not
+nanopore-specific calibration. See `?run_drimseq` for all filtering arguments.

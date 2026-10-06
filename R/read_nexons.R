@@ -36,6 +36,7 @@
 #'
 #' Run `x$run_deseq2(design, file = "gene", level = "gene", samples = NULL)`
 #' to fit and return a DESeq2 model. See [run_deseq2] for method arguments.
+#' Fit isoform usage models with `x$run_drimseq()`; see [run_drimseq].
 #' Count observed features with `x$coverage()`; see [coverage].
 #'
 #' R6 objects have reference semantics: assigning `y <- x` shares the object.
@@ -218,6 +219,39 @@ NexonsResults <- R6::R6Class(
       dataset <- DESeq2::DESeqDataSetFromMatrix(
         countData = input$counts, colData = input$metadata, design = design)
       DESeq2::DESeq(dataset)
+    },
+    run_drimseq = function(design, file = "unique", samples = NULL,
+                           min_samps_feature_expr, min_feature_expr = 10,
+                           min_samps_feature_prop = min_samps_feature_expr,
+                           min_feature_prop = 0.1, min_samps_gene_expr = NULL,
+                           min_gene_expr = 10, run_gene_twice = FALSE) {
+      if (missing(design)) stop("`design` must be supplied.", call. = FALSE)
+      if (missing(min_samps_feature_expr)) {
+        stop("`min_samps_feature_expr` must be supplied explicitly.", call. = FALSE)
+      }
+      input <- prepare_drimseq(self, design, file, samples,
+        min_samps_feature_expr, min_feature_expr, min_samps_feature_prop,
+        min_feature_prop, min_samps_gene_expr, min_gene_expr, run_gene_twice)
+      if (!requireNamespace("DRIMSeq", quietly = TRUE)) {
+        stop("Install DRIMSeq to use this method: BiocManager::install(\"DRIMSeq\").",
+             call. = FALSE)
+      }
+      dataset <- DRIMSeq::dmDSdata(counts = input$counts, samples = input$metadata)
+      dataset <- tryCatch(
+        do.call(DRIMSeq::dmFilter, c(list(x = dataset), input$filter)),
+        error = function(e) {
+          if (grepl("No genes left after filtering", conditionMessage(e), fixed = TRUE)) {
+            stop("Filtering left no analysable genes; relax the filtering thresholds or check the counts.",
+                 call. = FALSE)
+          }
+          stop(e)
+        })
+      if (!nrow(DRIMSeq::counts(dataset))) {
+        stop("Filtering left no analysable genes; relax the filtering thresholds or check the counts.",
+             call. = FALSE)
+      }
+      dataset <- DRIMSeq::dmPrecision(dataset, design = input$design)
+      DRIMSeq::dmFit(dataset, design = input$design)
     },
     print = function(...) {
       cat("<nexonsR>\n", "Folder: ", private$.folder, "\n",

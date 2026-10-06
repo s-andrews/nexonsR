@@ -1,6 +1,10 @@
 # Assemble inputs separately from fitting so alignment and aggregation can be
 # checked without requiring the optional Bioconductor dependency.
 prepare_deseq2 <- function(object, file, level, samples) {
+  prepare_model_counts(object, file, level, samples, "DESeq2")
+}
+
+prepare_model_counts <- function(object, file, level, samples, package) {
   validate_string(file, "file")
   validate_string(level, "level")
   if (!file %in% c("gene", "partial", "unique")) {
@@ -36,7 +40,7 @@ prepare_deseq2 <- function(object, file, level, samples) {
   if (!nrow(counts)) stop("The selected count table has no rows.", call. = FALSE)
   if (!is.numeric(counts) || any(!is.finite(counts)) || any(counts < 0) ||
       any(counts != floor(counts))) {
-    stop("DESeq2 requires finite, non-negative whole-number counts; counts are not rounded.",
+    stop(package, " requires finite, non-negative whole-number counts; counts are not rounded.",
          call. = FALSE)
   }
   id_column <- if (level == "gene") "Gene_ID" else "Transcript_ID"
@@ -53,7 +57,7 @@ prepare_deseq2 <- function(object, file, level, samples) {
     rownames(counts) <- ids
   }
   if (any(counts > .Machine$integer.max)) {
-    stop("Counts exceed the integer range supported by DESeq2.", call. = FALSE)
+    stop("Counts exceed the integer range supported by ", package, ".", call. = FALSE)
   }
   storage.mode(counts) <- "integer"
   list(counts = counts, metadata = metadata)
