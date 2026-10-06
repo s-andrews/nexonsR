@@ -22,7 +22,9 @@
 #' The `metadata` field is read-only; use the setter to replace it.
 #'
 #' Use `x$get_data("gene")` (or `"partial"`, `"unique"`) to read and cache a
-#' table on first access. Required annotation headers are validated then.
+#' table on first access. Select samples or request log2RPM values with its
+#' `samples` and `units` arguments; see [get_data()]. Required annotation
+#' headers are validated when the table is read.
 #' Sample names are preserved verbatim. Cached tables are reused, even if the
 #' source file changes. `x$clear_cache()` releases all cached tables so the next
 #' access reads from disk again. Keep source files in place until read.
@@ -54,6 +56,8 @@
 #' unlink(folder, recursive = TRUE)
 #' @export
 #' @importFrom R6 R6Class
+#' @importFrom DESeq2 DESeqDataSetFromMatrix
+#' @importFrom DRIMSeq dmDSdata
 #' @importFrom stats setNames
 #' @importFrom utils read.delim
 read_nexons <- function(folder, prefix = "nexons_output_") {
@@ -159,27 +163,55 @@ NexonsResults <- R6::R6Class(
       private$.metadata <- metadata
       invisible(self)
     },
-    get_data = function(type = c("gene", "partial", "unique")) {
+    get_data = function(type = c("gene", "partial", "unique"), samples = NULL,
+                        units = c("counts", "log2RPM")) {
       type <- match.arg(type)
-      if (!is.null(private$.cache[[type]])) return(private$.cache[[type]])
-      path <- private$.files[[type]]
-      if (is.na(path)) {
-        stop("No ", type, " output file was found for this object.", call. = FALSE)
+      units <- match.arg(units)
+      data <- private$.cache[[type]]
+      if (is.null(data)) {
+        path <- private$.files[[type]]
+        if (is.na(path)) {
+          stop("No ", type, " output file was found for this object.", call. = FALSE)
+        }
+        header <- read_nexons_header(path, type)
+        annotation <- header$annotation
+        if (!setequal(header$samples, private$.metadata$sample)) {
+          stop("Sample names no longer match metadata in ", basename(path),
+               ".", call. = FALSE)
+        }
+        # Keep identifiers (including numeric-looking IDs) as text.
+        classes <- c(rep("character", length(annotation)),
+                     rep("numeric", length(header$samples)))
+        data <- utils::read.delim(path, check.names = FALSE, quote = "",
+          comment.char = "", stringsAsFactors = FALSE, row.names = NULL,
+          colClasses = classes, fill = FALSE)
+        private$.cache[[type]] <- data
       }
-      header <- read_nexons_header(path, type)
-      annotation <- header$annotation
-      if (!setequal(header$samples, private$.metadata$sample)) {
-        stop("Sample names no longer match metadata in ", basename(path),
-             ".", call. = FALSE)
+      n_annotation <- if (type == "gene") 6L else 7L
+      available <- names(data)[seq.int(n_annotation + 1L, ncol(data))]
+      if (is.null(samples)) samples <- available
+      if (!is.character(samples) || !length(samples) || anyNA(samples) ||
+          anyDuplicated(samples) || !all(samples %in% available)) {
+        stop("`samples` must be a non-empty character vector of unique known sample names.",
+             call. = FALSE)
       }
-      # Keep identifiers (including numeric-looking IDs) as text.
-      classes <- c(rep("character", length(annotation)),
-                   rep("numeric", length(header$samples)))
-      data <- utils::read.delim(path, check.names = FALSE, quote = "",
-        comment.char = "", stringsAsFactors = FALSE, row.names = NULL,
-        colClasses = classes, fill = FALSE)
-      private$.cache[[type]] <- data
-      data
+      sample_positions <- match(samples, available) + n_annotation
+      result <- data[, c(seq_len(n_annotation), sample_positions), drop = FALSE]
+      names(result) <- c(names(data)[seq_len(n_annotation)], samples)
+      if (units == "log2RPM") {
+        counts <- as.matrix(result[, -seq_len(n_annotation), drop = FALSE])
+        if (!is.numeric(counts) || any(!is.finite(counts)) || any(counts < 0)) {
+          stop("log2RPM requires finite, non-negative counts.", call. = FALSE)
+        }
+        totals <- colSums(counts)
+        if (any(totals <= 0)) {
+          stop("log2RPM is undefined for samples with zero total counts: ",
+               paste(names(totals)[totals <= 0], collapse = ", "), ".",
+               call. = FALSE)
+        }
+        result[, -seq_len(n_annotation)] <- log2(sweep(counts, 2L, totals, "/") * 1e6 + 1)
+      }
+      result
     },
     gene_metadata = function(file = "gene") {
       validate_string(file, "file")
@@ -217,17 +249,16 @@ NexonsResults <- R6::R6Class(
       DESeq2::DESeq(dataset)
     },
     run_drimseq = function(design, file = "unique", samples = NULL,
-                           min_samps_feature_expr, min_feature_expr = 10,
+                           min_samps_feature_expr = NULL, min_feature_expr = 10,
                            min_samps_feature_prop = min_samps_feature_expr,
                            min_feature_prop = 0.1, min_samps_gene_expr = NULL,
-                           min_gene_expr = 10, run_gene_twice = FALSE) {
+                           min_gene_expr = 10, run_gene_twice = FALSE,
+                           filter_group = NULL) {
       if (missing(design)) stop("`design` must be supplied.", call. = FALSE)
-      if (missing(min_samps_feature_expr)) {
-        stop("`min_samps_feature_expr` must be supplied explicitly.", call. = FALSE)
-      }
       input <- prepare_drimseq(self, design, file, samples,
         min_samps_feature_expr, min_feature_expr, min_samps_feature_prop,
-        min_feature_prop, min_samps_gene_expr, min_gene_expr, run_gene_twice)
+        min_feature_prop, min_samps_gene_expr, min_gene_expr, run_gene_twice,
+        filter_group)
       dataset <- DRIMSeq::dmDSdata(counts = input$counts, samples = input$metadata)
       dataset <- tryCatch(
         do.call(DRIMSeq::dmFilter, c(list(x = dataset), input$filter)),

@@ -34,9 +34,11 @@ Count tables retain their own column order; match annotations by sample name.
 An empty prefix is allowed. Prefixes cannot contain path separators.
 
 Use \code{x$get_data("gene")} (or \code{"partial"}, \code{"unique"}) to read
-and cache a table on first access. Annotation headers are validated at that
-point. Annotation columns are read as character vectors and sample counts
-as numeric vectors. Column names are preserved verbatim.
+and cache a table on first access. Select samples or request log2RPM values
+with its \code{samples} and \code{units} arguments; see \code{\link{get_data}}.
+Annotation headers are validated at that point. Annotation columns are read as
+character vectors and sample counts as numeric vectors. Column names are
+preserved verbatim.
 Cached tables are reused even if the source file changes.
 \code{x$clear_cache()} releases all cached tables, so the next access reads
 from disk again. Keep source files in place until read.
