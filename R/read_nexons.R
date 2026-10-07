@@ -40,6 +40,8 @@
 #' to fit and return a DESeq2 model. See [run_deseq2] for method arguments.
 #' Fit isoform usage models with `x$run_drimseq()`; see [run_drimseq].
 #' Count observed features with `x$coverage()`; see [coverage].
+#' Compare assignment quantitations with `x$compare_assignments()`;
+#' see [compare_assignments].
 #'
 #' R6 objects have reference semantics: assigning `y <- x` shares the object.
 #' Use `x$clone(deep = TRUE)` for an independent copy.
@@ -209,7 +211,10 @@ NexonsResults <- R6::R6Class(
                paste(names(totals)[totals <= 0], collapse = ", "), ".",
                call. = FALSE)
         }
-        result[, -seq_len(n_annotation)] <- log2(sweep(counts, 2L, totals, "/") * 1e6 + 1)
+        transformed <- log2(sweep(counts, 2L, totals, "/") * 1e6 + 1)
+        for (i in seq_along(samples)) {
+          result[[n_annotation + i]] <- transformed[, i]
+        }
       }
       result
     },
@@ -236,6 +241,9 @@ NexonsResults <- R6::R6Class(
     },
     coverage = function(file = "gene", level = "gene", threshold = 1) {
       nexons_coverage(self, file, level, threshold)
+    },
+    compare_assignments = function(level = "gene", samples = NULL, units = "counts") {
+      nexons_compare_assignments(self, level, samples, units)
     },
     clear_cache = function() {
       private$.cache <- list()

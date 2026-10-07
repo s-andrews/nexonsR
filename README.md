@@ -86,6 +86,23 @@ are observed. Gene coverage from partial/unique files sums counts by `Gene_ID`
 before applying the threshold. Isoform coverage requires partial/unique data.
 The selected table is loaded and cached as needed.
 
+Compare quantitations across assignment files:
+
+```r
+results$compare_assignments()
+results$compare_assignments(level = "isoform", samples = "sample-1",
+                            units = "log2RPM")
+```
+
+Gene output contains `Gene_ID`, `Number_of_Isoforms`, `sample`, and available
+`gene`, `partial`, and `unique` quantitations. Isoform counts use the larger
+count from partial and unique, or `NA` when neither provides the gene.
+Isoform output contains `Transcript_ID`, `Gene_ID`, `sample`, `partial`, and
+`unique` and requires both isoform files. Raw isoform counts are summed by gene
+before log2RPM conversion, using each file's own sample totals. All features
+are retained; differing feature sets produce one warning and missing values
+are `NA`. Samples follow the supplied order, or metadata order by default.
+
 Fit a DESeq2 model after adding the design variables to metadata:
 
 ```r
