@@ -17,6 +17,9 @@
 #'   raw table is read and cached on first access. Sample selection and log2RPM
 #'   conversion are applied to the returned copy and do not alter the cache.
 #'
+#'   Flexout paths are discovered and cached separately in `x$flexout_files`
+#'   by [read_nexons()]. Their contents are not read by this method.
+#'
 #'   For each selected sample and row, log2RPM is calculated as
 #'   `log2(count / sum(counts) * 1e6 + 1)`, where the sum is over all rows of
 #'   the selected `type` table. Counts must be finite and non-negative, and

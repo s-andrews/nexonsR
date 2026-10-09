@@ -3,3 +3,4 @@
 ^\.Rprofile$
 ^\.agents$
 ^\.codex$
+^man/figures/.*\.svg$

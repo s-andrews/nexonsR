@@ -8,11 +8,19 @@
 #'   `loaded` lists the tables currently cached in memory.
 #' @details
 #' The prefix is followed by `gene.txt`, `partial.txt`, or
-#' `unique.txt`. No other files or subdirectories are searched.
+#' `unique.txt`. Subdirectories are not searched.
 #' Missing files produce a warning; if all three are missing, an error is raised.
 #' Discovery reads only the first line of each available file. Sample names
 #' must be non-empty, unique, and identical across files, regardless of order.
 #' Count rows are not read until requested.
+#'
+#' Files named `[prefix][sample]_flexout.txt.gz` are also discovered, removing
+#' only a trailing `.bam` from the count-table sample name when matching.
+#' Read-only `flexout_files` stores absolute paths named by the original sample
+#' names, in metadata order, with `NA` for missing files. Contents are never read.
+#' Unexpected or ambiguous sample names raise an error. An incomplete set warns;
+#' no flexout files is allowed without a warning. Paths remain cached for the
+#' object's lifetime, including after `clear_cache()`.
 #'
 #' `x$metadata` or `x$get_metadata()` returns a data frame initially containing
 #' one character column, `sample`. Samples follow the first available file's
@@ -98,6 +106,32 @@ read_nexons_header <- function(path, type) {
   list(annotation = annotation, samples = samples)
 }
 
+discover_flexout <- function(folder, prefix, samples) {
+  suffix <- "_flexout.txt.gz"
+  filenames <- list.files(folder, all.files = TRUE)
+  filenames <- filenames[startsWith(filenames, prefix) & endsWith(filenames, suffix)]
+  filenames <- filenames[!dir.exists(file.path(folder, filenames))]
+  paths <- stats::setNames(rep(NA_character_, length(samples)), samples)
+  if (!length(filenames)) return(paths)
+  stems <- sub("\\.bam$", "", samples)
+  if (anyDuplicated(stems)) {
+    stop("Ambiguous flexout sample names after removing trailing .bam.", call. = FALSE)
+  }
+  expected <- paste0(prefix, stems, suffix)
+  unexpected <- setdiff(filenames, expected)
+  if (length(unexpected)) {
+    stop("Flexout sample names do not match count-table headers: ",
+         paste(unexpected, collapse = ", "), call. = FALSE)
+  }
+  found <- expected %in% filenames
+  paths[found] <- file.path(folder, expected[found])
+  if (!all(found)) {
+    warning("Missing flexout files for samples: ",
+            paste(samples[!found], collapse = ", "), call. = FALSE)
+  }
+  paths
+}
+
 NexonsResults <- R6::R6Class(
   "nexonsR",
   public = list(
@@ -141,6 +175,7 @@ NexonsResults <- R6::R6Class(
         }
       }
       private$.metadata <- data.frame(sample = samples, stringsAsFactors = FALSE)
+      private$.flexout_files <- discover_flexout(private$.folder, prefix, samples)
     },
     get_metadata = function() {
       private$.metadata
@@ -299,9 +334,10 @@ NexonsResults <- R6::R6Class(
     folder = function() private$.folder,
     prefix = function() private$.prefix,
     files = function() private$.files,
+    flexout_files = function() private$.flexout_files,
     metadata = function() private$.metadata,
     loaded = function() names(private$.cache)
   ),
   private = list(.folder = NULL, .prefix = NULL, .files = NULL, .cache = NULL,
-                 .metadata = NULL)
+                 .metadata = NULL, .flexout_files = NULL)
 )

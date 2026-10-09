@@ -9,16 +9,25 @@
 \description{Locate gene and isoform count tables and create an R6 object
 by reading only the first line of each available file. Count rows remain unloaded.}
 \value{An R6 object of class \code{nexonsR}, with read-only fields
-\code{folder}, \code{prefix}, \code{files}, \code{metadata}, and \code{loaded}.
+\code{folder}, \code{prefix}, \code{files}, \code{flexout_files}, \code{metadata}, and \code{loaded}.
 \code{files} is a named character vector of absolute paths with entries
 \code{gene}, \code{partial}, and \code{unique}; missing files have \code{NA}
 paths. \code{loaded} lists the tables currently cached in memory.}
 \details{
 The prefix is followed by \code{gene.txt}, \code{partial.txt},
-or \code{unique.txt}. Other files and subdirectories are ignored.
+or \code{unique.txt}. Subdirectories are ignored.
 Missing files produce a warning; if all three are missing, an error is raised.
 Sample names must be non-empty, unique, and identical across available files,
 regardless of order. Invalid headers or mismatched sample sets raise an error.
+
+Files named \code{[prefix][sample]_flexout.txt.gz} are also discovered,
+removing only a trailing \code{.bam} from count-table sample names when matching.
+Read-only \code{flexout_files} stores absolute paths named by the original
+sample names, in metadata order, with \code{NA} for missing files.
+Contents are never read. Unexpected or ambiguous sample names raise an error.
+An incomplete set warns; no flexout files is allowed without a warning.
+Paths remain cached for the object's lifetime, including after
+\code{clear_cache()}.
 
 \code{x$get_metadata()} or \code{x$metadata} returns a data frame initially
 containing one character column, \code{sample}. Samples follow the first
