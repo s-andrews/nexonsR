@@ -322,6 +322,13 @@ NexonsResults <- R6::R6Class(
     print = function(...) {
       cat("<nexonsR>\n", "Folder: ", private$.folder, "\n",
           "Prefix: ", private$.prefix, "\n", sep = "")
+      metadata_columns <- setdiff(names(private$.metadata), "sample")
+      cat("Samples: ", nrow(private$.metadata), "\n",
+          "Flexout files: ", sum(!is.na(private$.flexout_files)), " found, ",
+          sum(is.na(private$.flexout_files)), " missing\n",
+          "Additional metadata columns: ",
+          if (length(metadata_columns)) paste(metadata_columns, collapse = ", ") else "none",
+          "\n", sep = "")
       for (type in names(private$.files)) {
         status <- if (is.na(private$.files[[type]])) "missing" else
           if (type %in% names(private$.cache)) "cached" else "available (not loaded)"
