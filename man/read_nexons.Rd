@@ -49,8 +49,12 @@ Annotation headers are validated at that point. Annotation columns are read as
 character vectors and sample counts as numeric vectors. Column names are
 preserved verbatim.
 Cached tables are reused even if the source file changes.
-\code{x$clear_cache()} releases all cached tables, so the next access reads
+\code{x$clear_cache()} releases all cached tables and parsed flexout data, so the next access reads
 from disk again. Keep source files in place until read.
+
+Use \code{x$parse_flexout()} to cache flexout frequency tables and
+\code{x$get_flexout(transcript_id)} to query them; see \code{\link{parse_flexout}}.
+\code{x$flexout_loaded} lists samples with parsed flexout data.
 
 \code{x$gene_metadata(file = "gene")} returns a data frame containing
 \code{Gene_ID} and \code{Gene_Name}. Gene rows are returned directly;

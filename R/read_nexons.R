@@ -34,8 +34,13 @@
 #' `samples` and `units` arguments; see [get_data()]. Required annotation
 #' headers are validated when the table is read.
 #' Sample names are preserved verbatim. Cached tables are reused, even if the
-#' source file changes. `x$clear_cache()` releases all cached tables so the next
+#' source file changes. `x$clear_cache()` releases all cached tables and parsed
+#' flexout data so the next
 #' access reads from disk again. Keep source files in place until read.
+#'
+#' Use `x$parse_flexout()` to cache flexout frequency tables and
+#' `x$get_flexout(transcript_id)` to query them; see [parse_flexout()].
+#' `x$flexout_loaded` lists samples with parsed flexout data.
 #'
 #' `x$gene_metadata(file = "gene")` returns `Gene_ID` and `Gene_Name`.
 #' Gene rows are returned directly; `"partial"` and `"unique"` return distinct
@@ -177,6 +182,36 @@ NexonsResults <- R6::R6Class(
       private$.metadata <- data.frame(sample = samples, stringsAsFactors = FALSE)
       private$.flexout_files <- discover_flexout(private$.folder, prefix, samples)
     },
+    parse_flexout = function(samples = NULL, chunk_size = 100000L) {
+      samples <- flexout_samples(samples,
+        names(private$.flexout_files)[!is.na(private$.flexout_files)])
+      if (!is.numeric(chunk_size) || length(chunk_size) != 1L ||
+          is.na(chunk_size) || !is.finite(chunk_size) || chunk_size < 1 ||
+          chunk_size > .Machine$integer.max || chunk_size != floor(chunk_size)) {
+        stop("`chunk_size` must be a positive integer within R's integer range.", call. = FALSE)
+      }
+      for (sample in samples) {
+        if (sample %in% names(private$.flexout_cache)) next
+        message("Parsing flexout sample: ", sample)
+        private$.flexout_cache[[sample]] <- parse_flexout_file(
+          private$.flexout_files[[sample]], as.integer(chunk_size))
+      }
+      invisible(self)
+    },
+    get_flexout = function(transcript_id, end = c("Start_Flex", "End_Flex"),
+                           samples = NULL) {
+      validate_string(transcript_id, "transcript_id")
+      end <- match.arg(end)
+      samples <- flexout_samples(samples, names(private$.flexout_cache))
+      result <- lapply(samples, function(sample) {
+        counts <- private$.flexout_cache[[sample]][[transcript_id]][[end]]
+        if (is.null(counts)) return(empty_flexout_counts())
+        counts <- counts[order(counts$value), , drop = FALSE]
+        rownames(counts) <- NULL
+        counts
+      })
+      stats::setNames(result, samples)
+    },
     get_metadata = function() {
       private$.metadata
     },
@@ -282,6 +317,7 @@ NexonsResults <- R6::R6Class(
     },
     clear_cache = function() {
       private$.cache <- list()
+      private$.flexout_cache <- list()
       invisible(self)
     },
     run_deseq2 = function(design, file = "gene", level = "gene", samples = NULL) {
@@ -342,9 +378,10 @@ NexonsResults <- R6::R6Class(
     prefix = function() private$.prefix,
     files = function() private$.files,
     flexout_files = function() private$.flexout_files,
+    flexout_loaded = function() names(private$.flexout_cache),
     metadata = function() private$.metadata,
     loaded = function() names(private$.cache)
   ),
   private = list(.folder = NULL, .prefix = NULL, .files = NULL, .cache = NULL,
-                 .metadata = NULL, .flexout_files = NULL)
+                 .metadata = NULL, .flexout_files = NULL, .flexout_cache = list())
 )
